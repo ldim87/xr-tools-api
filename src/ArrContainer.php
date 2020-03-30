@@ -7,6 +7,10 @@
 
 namespace XrTools;
 
-class APIError extends \Exception {
-	
+class ArrContainer
+{
+	/**
+	 * @var array
+	 */
+	public $data = [];
 }

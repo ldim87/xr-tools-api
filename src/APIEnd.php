@@ -7,6 +7,6 @@
 
 namespace XrTools;
 
-class APIError extends \Exception {
+class APIEnd extends \Exception {
 	
 }

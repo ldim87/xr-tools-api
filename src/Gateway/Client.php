@@ -7,7 +7,6 @@
 
 namespace XrTools\Gateway;
 
-use \XrTools\Utils\DebugMessages;
 use \XrTools\Utils;
 use \XrTools\CacheManager;
 
@@ -24,7 +23,7 @@ class Client
 	protected $serviceUse;
 
 	/**
-	 * @var DebugMessages
+	 * @var Utils\DebugMessages
 	 */
 	protected $dbg;
 
@@ -147,6 +146,7 @@ class Client
 		$base_url = 'http://'.$this->params['host'].(! empty($this->params['port']) ? ':'.$this->params['port'] : null);
 
 		// Определяем путь
+		// :TODO: сделать более гибкими настройки
 		if ($this->serviceUse == 'main') {
 			$url = $base_url.'/ajax/'.$path;
 		} else {

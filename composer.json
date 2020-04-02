@@ -10,7 +10,9 @@
     }
   ],
   "minimum-stability": "dev",
-  "require": {},
+  "require": {
+    "1kmenu/utils": "@dev"
+  },
   "autoload": {
     "psr-4": {
       "XrTools\\": "src"

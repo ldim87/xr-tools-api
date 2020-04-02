@@ -7,7 +7,7 @@
 
 namespace XrTools\Gateway;
 
-use \XrMenu\FileControllerInterface;
+use \XrTools\FileControllerInterface;
 use \XrTools\RouterMini;
 use \XrTools\Utils;
 use \XrTools\APIResponse;

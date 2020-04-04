@@ -54,13 +54,13 @@ class Client
 			|| empty($connectionParams['client_name'])
 			|| empty($connectionParams['secret_key'])
 		){
-			throw new \Exception('Params list is empty or invalid');
+			throw new \Exception('Gateway Client: Params list is empty or invalid');
 		}
 
 		$this->params = $connectionParams;
 
 		if (empty($serviceUse)) {
-			throw new \Exception('Service use not specified');
+			throw new \Exception('Gateway Client: Service use not specified');
 		}
 
 		$this->serviceUse = $serviceUse;
@@ -193,10 +193,12 @@ class Client
 		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 		curl_setopt($ch, CURLOPT_ENCODING, '');
-		curl_setopt($ch, CURLOPT_TIMEOUT, 20);
-		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
 		curl_setopt($ch, CURLOPT_COOKIE, $cookie);
 		curl_setopt($ch, CURLOPT_USERAGENT, $user_agent);
+
+		// :TODO:FIX: Не помогло, сайт все равно выбивает Gateway timeout...
+		curl_setopt($ch, CURLOPT_TIMEOUT, $this->params['timeout'] ?? 5);
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, $this->params['connect_timeout'] ?? 200);
 
 		if (! empty($post)) {
 			curl_setopt($ch, CURLOPT_POST, true);

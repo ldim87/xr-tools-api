@@ -33,6 +33,11 @@ class Client
 	protected $mc;
 
 	/**
+	 * @var string
+	 */
+	protected $user_agent_prefix = 'Gateway client';
+
+	/**
 	 * Конструктор класса
 	 * @param Utils $utils
 	 * @param CacheManager $mc
@@ -184,21 +189,22 @@ class Client
 			$post = http_build_query($post, null, '&');
 		}
 
-		$user_agent = '1000.menu Gateway service "'.$this->params['client_name'].'"';
+		$user_agent = "{$this->user_agent_prefix} {$this->params['client_name']}";
 
 		// Формируем cURL запрос
 		curl_setopt($ch, CURLOPT_URL, $url);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($ch, CURLOPT_HEADER, false);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 		curl_setopt($ch, CURLOPT_ENCODING, '');
 		curl_setopt($ch, CURLOPT_COOKIE, $cookie);
 		curl_setopt($ch, CURLOPT_USERAGENT, $user_agent);
-
-		// :TODO:FIX: Не помогло, сайт все равно выбивает Gateway timeout...
-		curl_setopt($ch, CURLOPT_TIMEOUT, $this->params['timeout'] ?? 5);
+		curl_setopt($ch, CURLOPT_TIMEOUT_MS, $this->params['timeout'] ?? 5000);
 		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, $this->params['connect_timeout'] ?? 200);
+
+		if(! empty($this->params['disable_ssl_check'])){
+			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+		}
 
 		if (! empty($post)) {
 			curl_setopt($ch, CURLOPT_POST, true);

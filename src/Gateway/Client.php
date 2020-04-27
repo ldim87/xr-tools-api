@@ -190,6 +190,8 @@ class Client
 		}
 
 		$user_agent = "{$this->user_agent_prefix} {$this->params['client_name']}";
+		$timeout_ms = $opt['timeout'] ?? $this->params['timeout'] ?? 5000;
+		$connect_timeout_ms = $opt['connect_timeout'] ??  $this->params['connect_timeout'] ?? 200;
 
 		// Формируем cURL запрос
 		curl_setopt($ch, CURLOPT_URL, $url);
@@ -198,8 +200,8 @@ class Client
 		curl_setopt($ch, CURLOPT_ENCODING, '');
 		curl_setopt($ch, CURLOPT_COOKIE, $cookie);
 		curl_setopt($ch, CURLOPT_USERAGENT, $user_agent);
-		curl_setopt($ch, CURLOPT_TIMEOUT_MS, $this->params['timeout'] ?? 5000);
-		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, $this->params['connect_timeout'] ?? 200);
+		curl_setopt($ch, CURLOPT_TIMEOUT_MS, $timeout_ms);
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, $connect_timeout_ms);
 
 		if(! empty($this->params['disable_ssl_check'])){
 			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);

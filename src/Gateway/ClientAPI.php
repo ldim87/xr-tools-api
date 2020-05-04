@@ -24,7 +24,7 @@ class ClientAPI
 	/**
 	 * @var string  Путь к api с которым работаем
 	 */
-	protected $apiPath;
+	protected $apiPath = 'gateway_api';
 
 	/**
 	 * @var string  Последняя ошибка
@@ -32,10 +32,23 @@ class ClientAPI
 	protected $lastError = '';
 
 	/**
+	 * @var bool Отладка
+	 */
+	protected $debug = false;
+
+	/**
+	 * @var array
+	 */
+	protected $requiredInput = [];
+
+	/**
 	 * ClientAPI constructor.
 	 * @param DebugMessages $dbg
 	 * @param Client $client
 	 * @param array $opt
+	 * - path       Путь к API по умолчанию
+	 * - req_input  Обязательные параметры
+	 * - debug      Отладка
 	 */
 	public function __construct(
 		DebugMessages $dbg,
@@ -44,12 +57,21 @@ class ClientAPI
 	){
 		$this->dbg = $dbg;
 		$this->client = $client;
-		
-		if (empty($opt['path'])) {
-			$opt['path'] = 'gateway_api';
+
+		// Путь к API по умолчанию
+		if (! empty($opt['path'])) {
+			$this->apiPath = $opt['path'];
 		}
-		
-		$this->apiPath = $opt['path'];
+
+		// Обязательные параметры
+		if (! empty($opt['req_input']) && is_array($opt['req_input'])) {
+			$this->requiredInput = $opt['req_input'];
+		}
+
+		// Отладка
+		if (! empty($opt['debug'])) {
+			$this->debug = true;
+		}
 	}
 
 	/**
@@ -66,13 +88,18 @@ class ClientAPI
 	 * @param  string  $path   Путь
 	 * @param  array   $input  Данные (POST по умолчанию)
 	 * @param  array   $opt    Опции
-	 * 	- debug          Отладка
-	 * 	- no_post_build  Не кодировать POST данные в строку
+	 * 	- debug       Отладка
+	 * 	- post_build  Кодировать POST данные в строку (по умолчанию TRUE)
 	 * @return mixed
 	 */
 	public function query( string $path, array $input = [], array $opt = [])
 	{
+		// Сбрасываем последнюю ошибку
 		$this->lastError = '';
+
+		if ($this->debug) {
+			$opt['debug'] = true;
+		}
 
 		$debug = ! empty($opt['debug']);
 
@@ -85,6 +112,9 @@ class ClientAPI
 
 		// Адресуемся на закрытое API
 		$path = $this->apiPath.'/'.$path;
+
+		// Создаём структуру и добавляем обязательные параметры
+		$input = $this->client->inputBuildAndMerge($input, $this->requiredInput);
 
 		// Работаем только с JSON
 		$opt['json'] = true;

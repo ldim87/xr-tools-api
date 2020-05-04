@@ -90,15 +90,16 @@ class Client
 	 * @param  string  $path   Путь
 	 * @param  array   $input  Данные (POST по умолчанию)
 	 * @param  array   $opt    Опции
-	 * 	- debug          Отладка
-	 * 	- no_post_build  Не кодировать POST данные в строку
-	 * 	- json           Декодировать из JSON
+	 * 	- debug       Отладка
+	 * 	- post_build  Кодировать POST данные в строку (по умолчанию TRUE)
+	 * 	- json        Декодировать из JSON
 	 * @return mixed
 	 */
 	public function query( string $path, array $input = [], array $opt = [])
 	{
 		$debug = ! empty($opt['debug']);
 		$cache = ! empty($opt['cache']);
+		$post_build = $opt['post_build'] ?? true;
 
 		if (empty($path)) {
 			if ($debug)
@@ -106,13 +107,8 @@ class Client
 			return false;
 		}
 
-		// Если не выбран тип отправляемых данных то поумолчанию POST
-		if (! isset($input['_get']) && ! isset($input['_post']) && ! isset($input['_cookie']))
-		{
-			$input = [
-				'_post' => $input,
-			];
-		}
+		// Собираем структуру входных данных
+		$input = $this->inputBuildAndMerge($input);
 
 		if ($cache)
 		{
@@ -162,30 +158,25 @@ class Client
 		$url_orig = $url;
 
 		// Добавляем параметры GET если переданы
-		if (! empty($input['_get']) && is_array($input['_get'])) {
+		if (! empty($input['_get'])) {
 			$url .= (substr_count($url, '?') == 0 ? '?' : '&') . http_build_query($input['_get'], null, '&');
 		}
 
-		// Идентифицируем сервис
-		$cookie = [
-			'gateway_name' => $this->params['client_name'],
-			'gateway_key'  => $this->params['secret_key'],
-		];
+		// Добавляем данные для авторизации в системе gateway
+		$input = $this->inputBuildAndMerge($input, [
+			'_cookie' => [
+				'gateway_name' => $this->params['client_name'],
+				'gateway_key'  => $this->params['secret_key'],
+			]
+		]);
 
-		// Добавляем COOKIE если переданы
-		if (! empty($input['_cookie']) && is_array($input['_cookie'])) {
-			$cookie = array_merge($input['_cookie'], $cookie);
-		}
+		// Создаём строковое представление
+		$cookie = http_build_query($input['_cookie'], null, '; ');
 
-		// Для отображения в отладке
-		$input['_cookie'] = $cookie;
+		$post = $input['_post'];
 
-		$cookie = http_build_query($cookie, null, '; ');
-
-		$post = $input['_post'] ?? [];
-
-		// Собираем POST в строку если не запрещено
-		if (empty($opt['no_post_build'])) {
+		// Создаём строковое представление
+		if ($post_build) {
 			$post = http_build_query($post, null, '&');
 		}
 
@@ -203,14 +194,14 @@ class Client
 		curl_setopt($ch, CURLOPT_TIMEOUT_MS, $timeout_ms);
 		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, $connect_timeout_ms);
 
-		if(! empty($this->params['disable_ssl_check'])){
-			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-		}
-
 		if (! empty($post)) {
 			curl_setopt($ch, CURLOPT_POST, true);
 			curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
+		}
+
+		if (! empty($this->params['disable_ssl_check'])) {
+			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 		}
 
 		// Выполняем запрос
@@ -225,19 +216,34 @@ class Client
 		// Отладка
 		if ($debug)
 		{
-			$report = 'Address: '.$url_orig."\n";
+			$report = 'Address: '.$url_orig." <br>\n";
 
-			if (! empty($input)) {
-				$report .= print_r($input, true);
+			if (! empty($input))
+			{
+				// Копируем
+				$pr_input = $input;
+
+				// Фильтруем пустые типы
+				$pr_input = array_filter($pr_input, function ($item){
+					return ! empty($item);
+				});
+
+				// Скрываем ключ в дебаге
+				if (! empty($pr_input['_cookie']['gateway_key'])) {
+					$pr_input['_cookie']['gateway_key'] = '*****';
+				}
+
+				$report .= print_r($pr_input, true)." <br>\n";
 			}
 
+			// Если ошибка
 			if ($result === false) {
-				$report .= 'Error: '.$error."\n";
+				$report .= 'Error: '.$error." <br>\n";
 				$this->dbg->log($report, __METHOD__);
 			}
+			// Если успешно
 			else {
-				$report .= 'Response code: '.$info['http_code']."\n".
-					'Answer received:'."\n".
+				$report .= 'Response code: '.$info['http_code'].', Answer received:'." <br>\n".
 					$result;
 				$this->dbg->log($report, __METHOD__);
 			}
@@ -254,6 +260,31 @@ class Client
 
 		// Обработка и возврат результата
 		return $this->resultProcessing($result, $opt);
+	}
+
+	/**
+	 * Создаёт структуру запроса и сливает со вторым если нужно
+	 * @param array $input1
+	 * @param array $input2
+	 * @return array
+	 */
+	public function inputBuildAndMerge(array $input1 = [], array $input2 = []): array
+	{
+		// Если не выбран тип отправляемых данных то поумолчанию POST
+		if (! isset($input1['_get']) && ! isset($input1['_post']) && ! isset($input1['_cookie'])) {
+			$input1 = ['_post' => $input1];
+		}
+
+		if (! isset($input2['_get']) && ! isset($input2['_post']) && ! isset($input2['_cookie'])) {
+			$input2 = ['_post' => $input2];
+		}
+
+		// Собираем и сливаем
+		return [
+			'_cookie' => array_merge($input1['_cookie'] ?? [], $input2['_cookie'] ?? []),
+			'_get'    => array_merge($input1['_get'] ?? [], $input2['_get'] ?? []),
+			'_post'   => array_merge($input1['_post'] ?? [], $input2['_post'] ?? []),
+		];
 	}
 
 	/**

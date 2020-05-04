@@ -7,8 +7,8 @@
 
 namespace XrTools;
 
-class APIResponse extends \Exception {
-	
+class APIResponse extends \Exception
+{
 	private $message_data;
 
 	/**
@@ -16,7 +16,7 @@ class APIResponse extends \Exception {
 	 *
 	 * @param null           $message
 	 * @param int            $code
-	 * @param Exception|null $previous
+	 * @param \Exception|null $previous
 	 */
 	public function __construct($message, $code = 0, \Exception $previous = null)
 	{

@@ -9,36 +9,31 @@ namespace XrTools;
 
 class APIResponse extends \Exception
 {
-	private $message_data;
+	/**
+	 * @var mixed
+	 */
+	private $data;
 
 	/**
 	 * Json encodes the message and calls the parent constructor.
-	 *
-	 * @param null           $message
-	 * @param int            $code
+	 * @param mixed $data
+	 * @param int $code
 	 * @param \Exception|null $previous
 	 */
-	public function __construct($message = "", $code = 0, \Exception $previous = null)
+	public function __construct($data = null, $code = 0, \Exception $previous = null)
 	{
-		if(is_array($message)){
-			$this->message_data = $message;
-			$message = 'See message data via getData() method';
-		} else {
-			$this->message_data = null;
-		}
+		$this->data = $data;
 
-		parent::__construct($message, $code, $previous);
+		parent::__construct("See message data via getData() method", $code, $previous);
 	}
 
 	/**
 	 * Returns the json decoded message.
-	 *
-	 * @param bool $assoc
-	 *
 	 * @return mixed
 	 */
 	public function getData()
 	{
-		return $this->message_data ?? $this->getMessage();
+		return $this->data;
 	}
 }
+

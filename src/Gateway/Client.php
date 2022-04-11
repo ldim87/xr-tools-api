@@ -7,6 +7,7 @@
 
 namespace XrTools\Gateway;
 
+use Exception;
 use \XrTools\Utils;
 use \XrTools\CacheManager;
 
@@ -16,26 +17,30 @@ class Client
 	 * @var array Параметры для осуществления запросов
 	 */
 	protected $params = [];
-
 	/**
 	 * @var string Имя сервиса с которым работаем
 	 */
 	protected $serviceUse;
-
 	/**
 	 * @var Utils\DebugMessages
 	 */
 	protected $dbg;
-
 	/**
 	 * @var CacheManager
 	 */
 	protected $mc;
-
 	/**
 	 * @var string
 	 */
 	protected $user_agent_prefix = 'Gateway client';
+	/**
+	 * @var array
+	 */
+	protected $localCache = [];
+	/**
+	 * @var bool
+	 */
+	protected $debug = false;
 
 	/**
 	 * Конструктор класса
@@ -43,13 +48,15 @@ class Client
 	 * @param CacheManager $mc
 	 * @param array $connectionParams
 	 * @param string $serviceUse
-	 * @throws \Exception
+	 * @param array $opt
+	 * @throws Exception
 	 */
 	public function __construct(
 		Utils $utils,
 		CacheManager $mc,
 		array $connectionParams,
-		string $serviceUse
+		string $serviceUse,
+		array $opt = []
 	){
 		$this->dbg = $utils->dbg();
 		$this->mc = $mc;
@@ -59,16 +66,20 @@ class Client
 			|| empty($connectionParams['client_name'])
 			|| empty($connectionParams['secret_key'])
 		){
-			throw new \Exception('Gateway Client: Params list is empty or invalid');
+			throw new Exception('Gateway Client: Params list is empty or invalid');
 		}
 
 		$this->params = $connectionParams;
 
 		if (empty($serviceUse)) {
-			throw new \Exception('Gateway Client: Service use not specified');
+			throw new Exception('Gateway Client: Service use not specified');
 		}
 
 		$this->serviceUse = $serviceUse;
+
+		if (isset($opt['debug'])) {
+			$this->debug = !! $opt['debug'];
+		}
 	}
 
 	/**
@@ -76,8 +87,12 @@ class Client
 	 *  - path  Путь к api (по умолчанию gateway_api)
 	 * @return ClientAPI
 	 */
-	public function api(array $opt = [])
+	public function api(array $opt = []): ClientAPI
 	{
+		if ($this->debug) {
+			$opt['debug'] = true;
+		}
+
 		return new ClientAPI(
 			$this->dbg, 
 			$this, 
@@ -97,7 +112,8 @@ class Client
 	 */
 	public function query( string $path, array $input = [], array $opt = [])
 	{
-		$debug = ! empty($opt['debug']);
+		$debug = $opt['debug'] ?? $this->debug;
+
 		$cache = ! empty($opt['cache']);
 		$post_build = $opt['post_build'] ?? true;
 
@@ -113,22 +129,36 @@ class Client
 		if ($cache)
 		{
 			// Если ключ не задан
-			if (empty($opt['cache_key'])) {
-				$opt['cache_key'] = 'gateway_'.$this->serviceUse.'_'.$path.'_'.md5( json_encode($input) );
+			$cacheKey = ! empty($opt['cache_key'])
+				? $opt['cache_key']
+				: 'gateway_'.$this->serviceUse.'_'.$path.'_'.md5( json_encode($input) );
+
+			// Если время в секундах не задано, формируем сами
+			$cacheSec = ! empty($opt['cache_time'])
+				? $opt['cache_time']
+				: 3600;
+
+			$localCache = ! empty($opt['cache_local']);
+			$loadFromLocal = false;
+
+			$result = null;
+
+			if ($localCache && isset($this->localCache[ $cacheKey ])) {
+				$result = $this->localCache[ $cacheKey ];
+				$loadFromLocal = true;
+			} else {
+				$result = $this->mc->get($cacheKey);
 			}
 
-			// Если время в секундах не залано, формируем сами
-			if (empty($opt['cache_time'])) {
-				$opt['cache_time'] = 3600;
+			if ($localCache && ! isset($this->localCache[ $cacheKey ])) {
+				$this->localCache[ $cacheKey ] = $result;
 			}
-
-			$result = $this->mc->get($opt['cache_key']);
 
 			// Если данные успешно получены
 			if ($result)
 			{
 				if ($debug) {
-					$this->dbg->log('Data loaded from cache, key: '.$opt['cache_key'], __METHOD__);
+					$this->dbg->log('Data loaded from '.($loadFromLocal ? 'local ' : '').'cache, key: '.$cacheKey, __METHOD__);
 				}
 
 				// Обработка и возврат результата
@@ -181,7 +211,7 @@ class Client
 		}
 
 		$user_agent = "{$this->user_agent_prefix} {$this->params['client_name']}";
-		$timeout_ms = $opt['timeout'] ?? $this->params['timeout'] ?? 5000;
+		$timeout_ms = $opt['timeout'] ?? $this->params['timeout'] ?? 10000;
 		$connect_timeout_ms = $opt['connect_timeout'] ??  $this->params['connect_timeout'] ?? 200;
 
 		// Формируем cURL запрос
@@ -254,8 +284,13 @@ class Client
 		}
 
 		// Кэшируем
-		if ($cache) {
-			$this->mc->set($opt['cache_key'], $result, $opt['cache_time']);
+		if ($cache)
+		{
+			$this->mc->set($cacheKey, $result, $cacheSec);
+
+			if ($localCache) {
+				$this->localCache[ $cacheKey ] = $result;
+			}
 		}
 
 		// Обработка и возврат результата

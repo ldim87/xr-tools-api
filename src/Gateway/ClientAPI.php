@@ -69,8 +69,8 @@ class ClientAPI
 		}
 
 		// Отладка
-		if (! empty($opt['debug'])) {
-			$this->debug = true;
+		if (isset($opt['debug'])) {
+			$this->debug = !! $opt['debug'];
 		}
 	}
 
@@ -97,16 +97,16 @@ class ClientAPI
 		// Сбрасываем последнюю ошибку
 		$this->lastError = '';
 
-		if ($this->debug) {
-			$opt['debug'] = true;
-		}
+		$debug = $opt['debug'] ?? $this->debug;
 
-		$debug = ! empty($opt['debug']);
-
-		if (empty($path)) {
+		if (empty($path))
+		{
 			$this->lastError = 'Request path not specified';
-			if ($debug)
+
+			if ($debug) {
 				$this->dbg->log( $this->lastError, __METHOD__);
+			}
+
 			return false;
 		}
 
@@ -123,24 +123,34 @@ class ClientAPI
 		$result = $this->client->query($path, $input, $opt);
 
 		// Если ошибка на уровне шлюза
-		if (empty($result)) {
+		if (empty($result))
+		{
 			$this->lastError = 'Gateway error';
+
 			return false;
 		}
 
 		// Если не валидный ответ API
-		if (! isset($result['status']) && ! isset($result['message']) && ! isset($result['response'])) {
+		if (! isset($result['status']) && ! isset($result['message']) && ! isset($result['response']))
+		{
 			$this->lastError = 'Invalid API response';
-			if ($debug)
+
+			if ($debug) {
 				$this->dbg->log( $this->lastError, __METHOD__);
+			}
+
 			return false;
 		}
 
 		// Если ошибка в ответе API
-		if (! $result['status']) {
+		if (! $result['status'])
+		{
 			$this->lastError = $result['message'];
-			if ($debug)
+
+			if ($debug) {
 				$this->dbg->log( $this->lastError, __METHOD__);
+			}
+
 			return false;
 		}
 

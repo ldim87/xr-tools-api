@@ -189,7 +189,7 @@ class Client
 
 		// Добавляем параметры GET если переданы
 		if (! empty($input['_get'])) {
-			$url .= (substr_count($url, '?') == 0 ? '?' : '&') . http_build_query($input['_get'], null, '&');
+			$url .= (substr_count($url, '?') == 0 ? '?' : '&') . http_build_query($input['_get'], '', '&');
 		}
 
 		// Добавляем данные для авторизации в системе gateway
@@ -201,13 +201,13 @@ class Client
 		]);
 
 		// Создаём строковое представление
-		$cookie = http_build_query($input['_cookie'], null, '; ');
+		$cookie = http_build_query($input['_cookie'], '', '; ');
 
 		$post = $input['_post'];
 
 		// Создаём строковое представление
 		if ($post_build) {
-			$post = http_build_query($post, null, '&');
+			$post = http_build_query($post, '', '&');
 		}
 
 		$user_agent = "{$this->user_agent_prefix} {$this->params['client_name']}";

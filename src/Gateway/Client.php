@@ -53,7 +53,7 @@ class Client
 	 */
 	public function __construct(
 		Utils $utils,
-		CacheManager $mc,
+		?CacheManager $mc,
 		array $connectionParams,
 		string $serviceUse,
 		array $opt = []
@@ -146,7 +146,8 @@ class Client
 			if ($localCache && isset($this->localCache[ $cacheKey ])) {
 				$result = $this->localCache[ $cacheKey ];
 				$loadFromLocal = true;
-			} else {
+			}
+			elseif($this->mc) {
 				$result = $this->mc->get($cacheKey);
 			}
 
@@ -286,7 +287,9 @@ class Client
 		// Кэшируем
 		if ($cache)
 		{
-			$this->mc->set($cacheKey, $result, $cacheSec);
+			if($this->mc){
+				$this->mc->set($cacheKey, $result, $cacheSec);
+			}
 
 			if ($localCache) {
 				$this->localCache[ $cacheKey ] = $result;

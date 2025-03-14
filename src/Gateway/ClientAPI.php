@@ -12,16 +12,6 @@ use \XrTools\Utils\DebugMessages;
 class ClientAPI
 {
 	/**
-	 * @var DebugMessages
-	 */
-	protected $dbg;
-
-	/**
-	 * @var Client
-	 */
-	protected $client;
-
-	/**
 	 * @var string  Путь к api с которым работаем
 	 */
 	protected $apiPath = 'gateway_api';
@@ -51,26 +41,23 @@ class ClientAPI
 	 * - debug      Отладка
 	 */
 	public function __construct(
-		DebugMessages $dbg,
-		Client $client,
-		array $opt
+		protected DebugMessages $dbg,
+		protected Client $client,
+		protected array $opt
 	){
-		$this->dbg = $dbg;
-		$this->client = $client;
-
 		// Путь к API по умолчанию
-		if (! empty($opt['path'])) {
-			$this->apiPath = $opt['path'];
+		if (! empty($this->opt['path'])) {
+			$this->apiPath = $this->opt['path'];
 		}
 
 		// Обязательные параметры
-		if (! empty($opt['req_input']) && is_array($opt['req_input'])) {
-			$this->requiredInput = $opt['req_input'];
+		if (! empty($this->opt['req_input']) && is_array($this->opt['req_input'])) {
+			$this->requiredInput = $this->opt['req_input'];
 		}
 
 		// Отладка
-		if (isset($opt['debug'])) {
-			$this->debug = !! $opt['debug'];
+		if (isset($this->opt['debug'])) {
+			$this->debug = !! $this->opt['debug'];
 		}
 	}
 
@@ -85,17 +72,19 @@ class ClientAPI
 
 	/**
 	 * Запрос к API
-	 * @param  string  $path   Путь
-	 * @param  array   $input  Данные (POST по умолчанию)
-	 * @param  array   $opt    Опции
-	 * 	- debug       Отладка
-	 * 	- post_build  Кодировать POST данные в строку (по умолчанию TRUE)
+	 * @param string $path Путь
+	 * @param array $input Данные (POST по умолчанию)
+	 * @param array $opt Опции
+	 *    - debug       Отладка
+	 *    - post_build  Кодировать POST данные в строку (по умолчанию TRUE)
 	 * @return mixed
+	 * @throws \Exception
 	 */
 	public function query( string $path, array $input = [], array $opt = [])
 	{
 		// Сбрасываем последнюю ошибку
 		$this->lastError = '';
+		$exception = ! empty($this->opt['exception']) || ! empty($opt['exception']);
 
 		$debug = $opt['debug'] ?? $this->debug;
 
@@ -105,6 +94,10 @@ class ClientAPI
 
 			if ($debug) {
 				$this->dbg->log( $this->lastError, __METHOD__);
+			}
+
+			if ($exception) {
+				throw new \Exception($this->lastError);
 			}
 
 			return false;
@@ -127,6 +120,10 @@ class ClientAPI
 		{
 			$this->lastError = 'Gateway error';
 
+			if ($exception) {
+				throw new \Exception($this->lastError);
+			}
+
 			return false;
 		}
 
@@ -139,6 +136,10 @@ class ClientAPI
 				$this->dbg->log( $this->lastError, __METHOD__);
 			}
 
+			if ($exception) {
+				throw new \Exception($this->lastError);
+			}
+
 			return false;
 		}
 
@@ -149,6 +150,10 @@ class ClientAPI
 
 			if ($debug) {
 				$this->dbg->log( $this->lastError, __METHOD__);
+			}
+
+			if ($exception) {
+				throw new \Exception($this->lastError);
 			}
 
 			return false;

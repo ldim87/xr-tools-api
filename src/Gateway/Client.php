@@ -7,79 +7,61 @@
 
 namespace XrTools\Gateway;
 
-use Exception;
-use \XrTools\Utils;
-use \XrTools\CacheManager;
-
 class Client
 {
-	/**
-	 * @var array Параметры для осуществления запросов
-	 */
-	protected $params = [];
-	/**
-	 * @var string Имя сервиса с которым работаем
-	 */
-	protected $serviceUse;
-	/**
-	 * @var Utils\DebugMessages
-	 */
-	protected $dbg;
-	/**
-	 * @var CacheManager
-	 */
-	protected $mc;
-	/**
-	 * @var string
-	 */
-	protected $user_agent_prefix = 'Gateway client';
-	/**
-	 * @var array
-	 */
-	protected $localCache = [];
-	/**
-	 * @var bool
-	 */
-	protected $debug = false;
+	protected \XrTools\Utils\DebugMessages $dbg;
+
+	protected string $userAgentPrefix = 'Gateway client';
+
+	protected array $localCache = [];
+
+	protected bool $debug = false;
 
 	/**
-	 * Конструктор класса
-	 * @param Utils $utils
-	 * @param CacheManager $mc
-	 * @param array $connectionParams
-	 * @param string $serviceUse
+	 * @param \XrTools\Utils $utils
+	 * @param \XrTools\CacheManager $mc
+	 * @param array $params
+	 * @param ?string $serviceName
 	 * @param array $opt
-	 * @throws Exception
+	 * @throws \Exception
 	 */
-	public function __construct(
-		Utils $utils,
-		?CacheManager $mc,
-		array $connectionParams,
-		string $serviceUse,
-		array $opt = []
+	function __construct(
+		protected \XrTools\Utils $utils,
+		protected \XrTools\CacheManager $mc,
+		protected array $params,
+		protected ?string $serviceName = null,
+		protected array $opt = []
 	){
 		$this->dbg = $utils->dbg();
-		$this->mc = $mc;
 
 		if (
-			empty($connectionParams['host'])
-			|| empty($connectionParams['client_name'])
-			|| empty($connectionParams['secret_key'])
+			empty($this->params['host'])
+			|| empty($this->params['client_name'])
+			|| empty($this->params['secret_key'])
 		){
-			throw new Exception('Gateway Client: Params list is empty or invalid');
+			throw new \Exception('Gateway Client: Params list is empty or invalid');
 		}
 
-		$this->params = $connectionParams;
-
-		if (empty($serviceUse)) {
-			throw new Exception('Gateway Client: Service use not specified');
+		if (isset($this->opt['debug'])) {
+			$this->debug = !! $this->opt['debug'];
 		}
+	}
 
-		$this->serviceUse = $serviceUse;
-
-		if (isset($opt['debug'])) {
-			$this->debug = !! $opt['debug'];
-		}
+	/**
+	 * @param string $serviceName
+	 * @param array $opt
+	 * @return Client
+	 * @throws \Exception
+	 */
+	function newInstance(string $serviceName, array $opt = []): Client
+	{
+		return new self(
+			$this->utils,
+			$this->mc,
+			$this->params,
+			$serviceName,
+			$opt,
+		);
 	}
 
 	/**
@@ -114,6 +96,12 @@ class Client
 	{
 		$debug = $opt['debug'] ?? $this->debug;
 
+		if (! $this->serviceName) {
+			if ($debug)
+				$this->dbg->log('Gateway Client: Service use not specified', __METHOD__);
+			return false;
+		}
+
 		$cache = ! empty($opt['cache']);
 		$post_build = $opt['post_build'] ?? true;
 
@@ -131,7 +119,7 @@ class Client
 			// Если ключ не задан
 			$cacheKey = ! empty($opt['cache_key'])
 				? $opt['cache_key']
-				: 'gateway_'.$this->serviceUse.'_'.$path.'_'.md5( json_encode($input) );
+				: 'gateway_'.$this->serviceName.'_'.$path.'_'.md5( json_encode($input) );
 
 			// Если время в секундах не задано, формируем сами
 			$cacheSec = ! empty($opt['cache_time'])
@@ -179,10 +167,10 @@ class Client
 
 		// Определяем путь
 		// :TODO: сделать более гибкими настройки
-		if ($this->serviceUse == 'main') {
+		if ($this->serviceName == 'main') {
 			$url = $base_url.'/ajax/'.$path;
 		} else {
-			$url = $base_url.'/api/'.$this->serviceUse.'/'.$path;
+			$url = $base_url.'/api/'.$this->serviceName.'/'.$path;
 		}
 
 		// Для отображения в отладке
@@ -211,7 +199,7 @@ class Client
 			$post = http_build_query($post, '', '&');
 		}
 
-		$user_agent = "{$this->user_agent_prefix} {$this->params['client_name']}";
+		$user_agent = "{$this->userAgentPrefix} {$this->params['client_name']}";
 		$timeout_ms = $opt['timeout'] ?? $this->params['timeout'] ?? 10000;
 		$connect_timeout_ms = $opt['connect_timeout'] ??  $this->params['connect_timeout'] ?? 200;
 

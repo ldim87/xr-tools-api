@@ -17,6 +17,8 @@ class Client
 
 	protected bool $debug = false;
 
+    protected string $lastResultString = "";
+
 	/**
 	 * @param \XrTools\Utils $utils
 	 * @param \XrTools\CacheManager $mc
@@ -42,9 +44,7 @@ class Client
 			throw new \Exception('Gateway Client: Params list is empty or invalid');
 		}
 
-		if (isset($this->opt['debug'])) {
-			$this->debug = !! $this->opt['debug'];
-		}
+        $this->debug = ! empty($this->opt['debug']);
 	}
 
 	/**
@@ -60,7 +60,7 @@ class Client
 			$this->mc,
 			$this->params,
 			$serviceName,
-			$opt,
+			array_merge($this->opt, $opt),
 		);
 	}
 
@@ -69,7 +69,7 @@ class Client
 	 *  - path  Путь к api (по умолчанию gateway_api)
 	 * @return ClientAPI
 	 */
-	public function api(array $opt = []): ClientAPI
+	function api(array $opt = []): ClientAPI
 	{
 		if ($this->debug) {
 			$opt['debug'] = true;
@@ -81,6 +81,14 @@ class Client
 			$opt
 		);
 	}
+
+    /**
+     * @return string
+     */
+    function getLastResultString(): string
+    {
+        return $this->lastResultString;
+    }
 
 	/**
 	 * Запрос к сервисам
@@ -231,6 +239,8 @@ class Client
 
 		// Закрываем
 		curl_close($ch);
+
+        $this->lastResultString = $result;
 
 		// Отладка
 		if ($debug)

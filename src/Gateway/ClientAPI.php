@@ -40,7 +40,7 @@ class ClientAPI
 	 * - req_input  Обязательные параметры
 	 * - debug      Отладка
 	 */
-	public function __construct(
+	function __construct(
 		protected DebugMessages $dbg,
 		protected Client $client,
 		protected array $opt
@@ -55,17 +55,14 @@ class ClientAPI
 			$this->requiredInput = $this->opt['req_input'];
 		}
 
-		// Отладка
-		if (isset($this->opt['debug'])) {
-			$this->debug = !! $this->opt['debug'];
-		}
+        $this->debug = ! empty($this->opt['debug']);
 	}
 
 	/**
 	 * Последняя ошибка
 	 * @return string
 	 */
-	public function lastError(): string
+	function lastError(): string
 	{
 		return $this->lastError;
 	}
@@ -80,7 +77,7 @@ class ClientAPI
 	 * @return mixed
 	 * @throws \Exception
 	 */
-	public function query( string $path, array $input = [], array $opt = [])
+	function query( string $path, array $input = [], array $opt = [])
 	{
 		// Сбрасываем последнюю ошибку
 		$this->lastError = '';
@@ -119,6 +116,10 @@ class ClientAPI
 		if (empty($result))
 		{
 			$this->lastError = 'Gateway error';
+
+            if ($debug) {
+                $this->dbg->log( $this->lastError.":<br>\n<br>\n".$this->client->getLastResultString(), __METHOD__);
+            }
 
 			if ($exception) {
 				throw new \Exception($this->lastError);

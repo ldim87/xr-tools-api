@@ -12,7 +12,8 @@
   "minimum-stability": "dev",
   "require": {
     "1kmenu/utils": "@dev",
-    "ext-curl": "*"
+    "ext-curl": "*",
+    "ext-mbstring": "*"
   },
   "autoload": {
     "psr-4": {
